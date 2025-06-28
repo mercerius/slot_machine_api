@@ -9,6 +9,7 @@ pnpm-debug.log*
 dist/
 build/
 *.tsbuildinfo
+*.zip
 
 # Runtime data
 pids
@@ -119,3 +120,7 @@ cdk.out
 
 # Lambda deployment packages
 *.zip
+
+# AWS Lambda specific
+response.json
+.aws/

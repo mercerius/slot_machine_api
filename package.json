@@ -1,21 +1,59 @@
 {
   "name": "slot_machine_api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Slot Machine API for AWS Lambda",
+  "main": "dist/handler.js",
   "scripts": {
     "build": "tsc",
+    "build:clean": "rimraf dist && pnpm build",
+    "dev": "tsx watch src/local-server.ts",
+    "dev:lambda": "tsx watch --inspect src/local-lambda.ts",
     "start": "node dist/handler.js",
-    "dev": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "package": "pnpm build:clean && node scripts/package.js",
+    "deploy": "pnpm package && node scripts/deploy.js",
+    "deploy:dev": "cross-env ENVIRONMENT=dev pnpm deploy",
+    "deploy:prod": "cross-env ENVIRONMENT=prod pnpm deploy",
+    "logs": "node scripts/logs.js",
+    "invoke": "node scripts/invoke.js",
+    "create-iam-role": "node scripts/create-iam-role.js",
+    "delete-iam-role": "node scripts/delete-iam-role.js",
+    "secrets:create:dev": "node scripts/manage-secrets.js create dev",
+    "secrets:create:prod": "node scripts/manage-secrets.js create prod",
+    "secrets:get:dev": "node scripts/manage-secrets.js get dev",
+    "secrets:get:prod": "node scripts/manage-secrets.js get prod",
+    "secrets:update:dev": "node scripts/manage-secrets.js update dev",
+    "secrets:update:prod": "node scripts/manage-secrets.js update prod",
+    "secrets:delete:dev": "node scripts/manage-secrets.js delete dev",
+    "secrets:delete:prod": "node scripts/manage-secrets.js delete prod"
   },
-  "keywords": [],
+  "keywords": [
+    "aws",
+    "lambda",
+    "slot-machine",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
     "@types/aws-lambda": "^8.10.150",
-    "aws-lambda": "^1.0.7",
+    "@aws-sdk/client-secrets-manager": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.2",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.10.1",
+    "archiver": "^7.0.1",
+    "cross-env": "^7.0.3",
+    "express": "^4.21.1",
+    "jest": "^30.0.3",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.0",
+    "tsx": "^4.19.1",
     "typescript": "^5.8.3"
   }
 }

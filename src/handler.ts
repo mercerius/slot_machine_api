@@ -1,4 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { getAppSecrets, AppSecrets } from "./secrets";
 
 // Define the slot machine symbols
 const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "🔔", "⭐", "💎", "7️⃣"];
@@ -97,6 +98,9 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
+    // Load application secrets
+    const secrets = await getAppSecrets();
+
     // Parse request body if it exists
     let requestBody: SpinRequest = {};
     if (event.body) {
@@ -110,18 +114,19 @@ export const handler = async (
     // Get bet amount from request body or use default
     const bet = requestBody.bet && requestBody.bet > 0 ? requestBody.bet : 1;
 
-    // Validate bet amount (optional: add max bet limit)
-    if (bet > 100) {
+    // Validate bet amount using secrets configuration
+    const maxBetAmount = secrets.maxBetAmount || 100;
+    if (bet > maxBetAmount) {
       return {
         statusCode: 400,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": secrets.corsOrigins?.[0] || "*",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
         },
         body: JSON.stringify({
-          error: "Maximum bet amount is 100",
+          error: `Maximum bet amount is ${maxBetAmount}`,
         }),
       };
     }
@@ -133,7 +138,7 @@ export const handler = async (
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": secrets.corsOrigins?.[0] || "*",
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
       },
