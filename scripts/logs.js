@@ -41,7 +41,8 @@ function getLogs(environment = "dev", lines = 50) {
       --log-group-name ${logGroupName} \\
       --order-by LastEventTime \\
       --descending \\
-      --max-items 1`;
+      --max-items 1 \\
+      --no-cli-pager`;
 
     const output = executeCommand(command, "Getting latest log stream");
     const logStreams = JSON.parse(output);
@@ -64,7 +65,8 @@ function getLogs(environment = "dev", lines = 50) {
     const eventsCommand = `aws logs get-log-events \\
       --log-group-name ${logGroupName} \\
       --log-stream-name ${latestStream.logStreamName} \\
-      --start-from-head`;
+      --start-from-head \\
+      --no-cli-pager`;
 
     const eventsOutput = executeCommand(eventsCommand, "Fetching log events");
     const events = JSON.parse(eventsOutput);

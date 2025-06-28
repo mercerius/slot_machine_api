@@ -34,7 +34,7 @@ function checkAWSCLI() {
 function checkCredentials() {
   try {
     executeCommand(
-      "aws sts get-caller-identity",
+      "aws sts get-caller-identity --no-cli-pager",
       "Verifying AWS credentials",
       true
     );
@@ -50,7 +50,7 @@ function checkCredentials() {
 function getAccountId() {
   try {
     const output = executeCommand(
-      "aws sts get-caller-identity --query Account --output text",
+      "aws sts get-caller-identity --query Account --output text --no-cli-pager",
       "Getting AWS Account ID",
       true
     );
@@ -64,7 +64,7 @@ function getAccountId() {
 function roleExists(roleName) {
   try {
     executeCommand(
-      `aws iam get-role --role-name ${roleName}`,
+      `aws iam get-role --role-name ${roleName} --no-cli-pager`,
       "Checking if role exists",
       true
     );
@@ -77,7 +77,7 @@ function roleExists(roleName) {
 function policyExists(policyArn) {
   try {
     executeCommand(
-      `aws iam get-policy --policy-arn ${policyArn}`,
+      `aws iam get-policy --policy-arn ${policyArn} --no-cli-pager`,
       "Checking if policy exists",
       true
     );
@@ -90,7 +90,7 @@ function policyExists(policyArn) {
 function getAttachedPolicies(roleName) {
   try {
     const output = executeCommand(
-      `aws iam list-attached-role-policies --role-name ${roleName}`,
+      `aws iam list-attached-role-policies --role-name ${roleName} --no-cli-pager`,
       "Getting attached policies",
       true
     );
@@ -118,7 +118,8 @@ function detachPolicies(roleName) {
     try {
       const command = `aws iam detach-role-policy \\
         --role-name ${roleName} \\
-        --policy-arn ${policy.PolicyArn}`;
+        --policy-arn ${policy.PolicyArn} \\
+        --no-cli-pager`;
 
       executeCommand(command, `Detaching policy: ${policy.PolicyName}`);
       console.log(`✅ Detached policy: ${policy.PolicyName}`);
@@ -145,7 +146,7 @@ function deleteCustomPolicy(accountId) {
   try {
     // First, get all policy versions except the default
     const versionsOutput = executeCommand(
-      `aws iam list-policy-versions --policy-arn ${policyArn}`,
+      `aws iam list-policy-versions --policy-arn ${policyArn} --no-cli-pager`,
       "Getting policy versions",
       true
     );
@@ -158,7 +159,8 @@ function deleteCustomPolicy(accountId) {
           try {
             const deleteVersionCommand = `aws iam delete-policy-version \\
               --policy-arn ${policyArn} \\
-              --version-id ${version.VersionId}`;
+              --version-id ${version.VersionId} \\
+              --no-cli-pager`;
 
             executeCommand(
               deleteVersionCommand,
@@ -175,7 +177,7 @@ function deleteCustomPolicy(accountId) {
     }
 
     // Now delete the policy itself
-    const command = `aws iam delete-policy --policy-arn ${policyArn}`;
+    const command = `aws iam delete-policy --policy-arn ${policyArn} --no-cli-pager`;
     executeCommand(command, `Deleting custom policy: ${policyName}`);
     console.log(`✅ Custom policy deleted: ${policyName}`);
 
@@ -190,7 +192,7 @@ function deleteRole(roleName) {
   console.log(`📋 Deleting IAM role: ${roleName}`);
 
   try {
-    const command = `aws iam delete-role --role-name ${roleName}`;
+    const command = `aws iam delete-role --role-name ${roleName} --no-cli-pager`;
     executeCommand(command, `Deleting IAM role: ${roleName}`);
     console.log(`✅ IAM role deleted: ${roleName}`);
     return true;
@@ -207,7 +209,7 @@ function checkLambdaFunctionsUsingRole(accountId, roleName) {
 
   try {
     const functionsOutput = executeCommand(
-      "aws lambda list-functions",
+      "aws lambda list-functions --no-cli-pager",
       "Getting Lambda functions",
       true
     );

@@ -64,6 +64,7 @@ function invokeFunction(environment = "dev", payload = null) {
       --function-name ${functionName} \\
       --payload file://${payloadFile} \\
       --cli-binary-format raw-in-base64-out \\
+      --no-cli-pager \\
       response.json`;
 
     const output = executeCommand(command, `Invoking ${functionName}`);

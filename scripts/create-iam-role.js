@@ -55,7 +55,7 @@ function checkAWSCLI() {
 function checkCredentials() {
   try {
     executeCommand(
-      "aws sts get-caller-identity",
+      "aws sts get-caller-identity --no-cli-pager",
       "Verifying AWS credentials",
       true
     );
@@ -91,7 +91,7 @@ function checkRequiredFiles() {
 function getAccountId() {
   try {
     const output = executeCommand(
-      "aws sts get-caller-identity --query Account --output text",
+      "aws sts get-caller-identity --query Account --output text --no-cli-pager",
       "Getting AWS Account ID",
       true
     );
@@ -105,7 +105,7 @@ function getAccountId() {
 function roleExists(roleName) {
   try {
     executeCommand(
-      `aws iam get-role --role-name ${roleName}`,
+      `aws iam get-role --role-name ${roleName} --no-cli-pager`,
       "Checking if role exists",
       true
     );
@@ -118,7 +118,7 @@ function roleExists(roleName) {
 function policyExists(policyArn) {
   try {
     executeCommand(
-      `aws iam get-policy --policy-arn ${policyArn}`,
+      `aws iam get-policy --policy-arn ${policyArn} --no-cli-pager`,
       "Checking if policy exists",
       true
     );
@@ -138,7 +138,8 @@ function createRole() {
       --role-name ${roleName} \\
       --assume-role-policy-document file://${trustPolicyFile} \\
       --description "${description}" \\
-      --max-session-duration 3600`;
+      --max-session-duration 3600 \\
+      --no-cli-pager`;
 
     executeCommand(command, `Creating IAM role: ${roleName}`);
     console.log(`✅ IAM role created: ${roleName}`);
@@ -168,7 +169,8 @@ function createCustomPolicy(accountId) {
     const command = `aws iam create-policy \\
       --policy-name ${policyName} \\
       --policy-document file://${permissionsPolicyFile} \\
-      --description "Custom permissions for Slot Machine API Lambda functions"`;
+      --description "Custom permissions for Slot Machine API Lambda functions" \\
+      --no-cli-pager`;
 
     executeCommand(command, `Creating IAM policy: ${policyName}`);
     console.log(`✅ IAM policy created: ${policyName}`);
@@ -192,7 +194,8 @@ function attachPolicies(accountId) {
   try {
     const basicCommand = `aws iam attach-role-policy \\
       --role-name ${roleName} \\
-      --policy-arn ${basicExecutionPolicyArn}`;
+      --policy-arn ${basicExecutionPolicyArn} \\
+      --no-cli-pager`;
 
     executeCommand(basicCommand, "Attaching AWS Lambda Basic Execution Role");
     console.log("✅ AWS Lambda Basic Execution Role attached");
@@ -206,7 +209,8 @@ function attachPolicies(accountId) {
     try {
       const customCommand = `aws iam attach-role-policy \\
         --role-name ${roleName} \\
-        --policy-arn ${customPolicyArn}`;
+        --policy-arn ${customPolicyArn} \\
+        --no-cli-pager`;
 
       executeCommand(customCommand, "Attaching custom policy");
       console.log("✅ Custom policy attached");
@@ -228,7 +232,7 @@ function displayRoleInfo(accountId) {
 
     // Get role details
     const roleOutput = executeCommand(
-      `aws iam get-role --role-name ${roleName}`,
+      `aws iam get-role --role-name ${roleName} --no-cli-pager`,
       "Getting role details",
       true
     );
@@ -241,7 +245,7 @@ function displayRoleInfo(accountId) {
 
     // Get attached policies
     const policiesOutput = executeCommand(
-      `aws iam list-attached-role-policies --role-name ${roleName}`,
+      `aws iam list-attached-role-policies --role-name ${roleName} --no-cli-pager`,
       "Getting attached policies",
       true
     );
@@ -256,8 +260,10 @@ function displayRoleInfo(accountId) {
       console.log("   - No policies attached");
     }
 
-    console.log("\\n💡 Usage in deploy.js:");
-    console.log(`   Update the role ARN to: ${roleInfo.Role.Arn}`);
+    console.log("\\n💡 Ready for deployment:");
+    console.log(
+      `   The deploy script will automatically use: ${roleInfo.Role.Arn}`
+    );
   } catch (error) {
     console.warn("⚠️  Could not retrieve role information");
   }
@@ -276,7 +282,7 @@ function waitForRoleToPropagate() {
       attempts++;
       try {
         executeCommand(
-          `aws iam get-role --role-name ${IAM_CONFIG.roleName}`,
+          `aws iam get-role --role-name ${IAM_CONFIG.roleName} --no-cli-pager`,
           "Checking role propagation",
           true
         );
@@ -313,20 +319,19 @@ async function createIAMRole() {
   const { roleName, policyName } = IAM_CONFIG;
 
   // Check if role already exists
+  let roleAlreadyExists = false;
   if (roleExists(roleName)) {
     console.log(`⚠️  IAM role "${roleName}" already exists`);
-
-    // Ask if user wants to continue (in a real implementation, you might want to use a proper prompt)
     console.log("The role will be updated with the latest policies...");
-
-    displayRoleInfo(accountId);
-    return;
+    roleAlreadyExists = true;
   }
 
   try {
-    // Create the role
-    if (!createRole()) {
-      process.exit(1);
+    // Create the role if it doesn't exist
+    if (!roleAlreadyExists) {
+      if (!createRole()) {
+        process.exit(1);
+      }
     }
 
     // Create custom policy if it doesn't exist
@@ -342,13 +347,15 @@ async function createIAMRole() {
       console.log(`✅ Custom policy already exists: ${policyName}`);
     }
 
-    // Attach policies
+    // Attach policies (this will work for both new and existing roles)
     if (!attachPolicies(accountId)) {
       process.exit(1);
     }
 
-    // Wait for propagation
-    await waitForRoleToPropagate();
+    // Wait for propagation only if role was just created
+    if (!roleAlreadyExists) {
+      await waitForRoleToPropagate();
+    }
 
     // Display final information
     displayRoleInfo(accountId);
@@ -356,7 +363,9 @@ async function createIAMRole() {
     console.log("\\n🎉 IAM role setup completed successfully!");
     console.log("");
     console.log("📝 Next steps:");
-    console.log("1. Update scripts/deploy.js with the role ARN shown above");
+    console.log(
+      '1. Run "pnpm package" to prepare your Lambda function for deployment'
+    );
     console.log('2. Run "pnpm deploy:dev" to deploy your Lambda function');
   } catch (error) {
     console.error("\\n❌ IAM role setup failed:", error.message);

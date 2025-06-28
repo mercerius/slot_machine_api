@@ -36,7 +36,7 @@ function executeCommand(command, description, silent = false) {
 function getAccountId() {
   try {
     const output = executeCommand(
-      "aws sts get-caller-identity --query Account --output text",
+      "aws sts get-caller-identity --query Account --output text --no-cli-pager",
       "Getting AWS Account ID",
       true
     );
@@ -64,7 +64,7 @@ function getRegion() {
 function secretExists(secretName) {
   try {
     executeCommand(
-      `aws secretsmanager describe-secret --secret-id "${secretName}"`,
+      `aws secretsmanager describe-secret --secret-id "${secretName}" --no-cli-pager`,
       `Checking if secret ${secretName} exists`,
       true
     );
@@ -100,7 +100,8 @@ function createSecret(environment) {
     --name "${config.secretName}" \\
     --description "${config.description}" \\
     --secret-string '${secretValue.replace(/'/g, "'\\''")}' \\
-    --region ${region}`;
+    --region ${region} \\
+    --no-cli-pager`;
 
   executeCommand(command, `Creating secret: ${config.secretName}`);
   console.log(`✅ Created secret: ${config.secretName}`);
@@ -136,7 +137,8 @@ function updateSecret(environment, secretData) {
   const command = `aws secretsmanager update-secret \\
     --secret-id "${config.secretName}" \\
     --secret-string '${secretValue.replace(/'/g, "'\\''")}' \\
-    --region ${region}`;
+    --region ${region} \\
+    --no-cli-pager`;
 
   executeCommand(command, `Updating secret: ${config.secretName}`);
   console.log(`✅ Updated secret: ${config.secretName}`);
@@ -152,7 +154,7 @@ function getSecret(environment) {
 
   try {
     const output = executeCommand(
-      `aws secretsmanager get-secret-value --secret-id "${config.secretName}" --query SecretString --output text`,
+      `aws secretsmanager get-secret-value --secret-id "${config.secretName}" --query SecretString --output text --no-cli-pager`,
       `Getting secret: ${config.secretName}`,
       true
     );
@@ -175,7 +177,8 @@ function deleteSecret(environment) {
 
   const command = `aws secretsmanager delete-secret \\
     --secret-id "${config.secretName}" \\
-    --force-delete-without-recovery`;
+    --force-delete-without-recovery \\
+    --no-cli-pager`;
 
   executeCommand(command, `Deleting secret: ${config.secretName}`);
   console.log(`✅ Deleted secret: ${config.secretName}`);
