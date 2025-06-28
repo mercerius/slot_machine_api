@@ -1,0 +1,21 @@
+{
+  "name": "slot_machine_api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/handler.js",
+    "dev": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.4",
+  "dependencies": {
+    "@types/aws-lambda": "^8.10.150",
+    "aws-lambda": "^1.0.7",
+    "typescript": "^5.8.3"
+  }
+}
