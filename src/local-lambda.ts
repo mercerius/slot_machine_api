@@ -24,7 +24,9 @@ class LocalLambdaSimulator {
         httpMethod: "POST",
         path: "/spin",
         stage: "local",
-        requestId: `local-${Date.now()}`,
+        requestId: `local-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
         requestTime: new Date().toISOString(),
         requestTimeEpoch: Date.now(),
         resourceId: "local",
@@ -83,21 +85,55 @@ class LocalLambdaSimulator {
     }
   }
 
+  async testGetRequest() {
+    console.log("\n🔍 Testing GET request (should fail)...");
+
+    const event = this.createMockEvent();
+    event.httpMethod = "GET";
+    event.body = null;
+
+    try {
+      const result = await handler(event);
+      console.log(`📊 Status: ${result.statusCode}`);
+
+      if (result.statusCode !== 200) {
+        const errorResponse = JSON.parse(result.body);
+        console.log(`❌ Expected Error: ${errorResponse.error}`);
+      }
+    } catch (error) {
+      console.error("❌ Error testing GET request:", error);
+    }
+  }
+
   async runMultipleTests() {
     console.log("🚀 Starting Local Lambda Tests...\n");
 
-    // Test default bet
-    await this.testSpin();
+    try {
+      // Test default bet
+      await this.testSpin();
 
-    // Test with different bet amounts
-    await this.testSpin(5);
-    await this.testSpin(10);
-    await this.testSpin(25);
+      // Test with different bet amounts
+      await this.testSpin(5);
+      await this.testSpin(10);
+      await this.testSpin(25);
 
-    // Test invalid bet (too high)
-    await this.testSpin(150);
+      // Test invalid bet (too high)
+      await this.testSpin(150);
 
-    console.log("\n✅ Local Lambda tests completed!");
+      // Test invalid bet (negative)
+      await this.testSpin(-5);
+
+      // Test invalid bet (zero)
+      await this.testSpin(0);
+
+      // Test GET request
+      await this.testGetRequest();
+
+      console.log("\n✅ Local Lambda tests completed!");
+    } catch (error) {
+      console.error("\n❌ Test suite failed:", error);
+      throw error;
+    }
   }
 }
 

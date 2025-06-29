@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import { APIGatewayProxyEvent } from "aws-lambda";
-import { handler } from "./handler";
+import { handler, corsHandler } from "./handler";
 
 const app = express();
 const PORT = process.env["PORT"] || 3000;
@@ -25,11 +25,24 @@ app.use((req, res, next) => {
 
 // Convert Express request to Lambda event format
 function createLambdaEvent(req: express.Request): APIGatewayProxyEvent {
+  // Convert query parameters safely
+  const queryStringParameters: { [key: string]: string } | null =
+    Object.keys(req.query).length > 0
+      ? Object.fromEntries(
+          Object.entries(req.query).map(([key, value]) => [
+            key,
+            Array.isArray(value)
+              ? value[0]?.toString() || ""
+              : value?.toString() || "",
+          ])
+        )
+      : null;
+
   return {
     httpMethod: req.method,
     path: req.path,
-    pathParameters: req.params,
-    queryStringParameters: req.query as { [key: string]: string },
+    pathParameters: Object.keys(req.params).length > 0 ? req.params : null,
+    queryStringParameters,
     headers: req.headers as { [key: string]: string },
     body: req.body ? JSON.stringify(req.body) : null,
     isBase64Encoded: false,
@@ -106,7 +119,26 @@ app.post("/spin", async (req, res) => {
   }
 });
 
-// Handle OPTIONS for CORS
+// Handle OPTIONS for CORS preflight
+app.options("/spin", async (req, res) => {
+  try {
+    const event = createLambdaEvent(req);
+    const result = await corsHandler(event);
+
+    res.status(result.statusCode);
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => {
+        res.set(key, value as string);
+      });
+    }
+    res.send(result.body);
+  } catch (error) {
+    console.error("Error in CORS handler:", error);
+    res.status(200).json({});
+  }
+});
+
+// Handle all other OPTIONS requests
 app.options("*", (req, res) => {
   res.sendStatus(200);
 });
