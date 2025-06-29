@@ -7,8 +7,35 @@ const OUTPUT_DIR = path.join(__dirname, "..", "build");
 const PACKAGE_NAME = "slot-machine-api.zip";
 const PACKAGE_PATH = path.join(OUTPUT_DIR, PACKAGE_NAME);
 
-async function createDeploymentPackage() {
+function isPackageUpToDate() {
+  if (!fs.existsSync(PACKAGE_PATH)) {
+    return false;
+  }
+
+  if (!fs.existsSync(DIST_DIR)) {
+    return false;
+  }
+
+  const packageStats = fs.statSync(PACKAGE_PATH);
+  const distStats = fs.statSync(DIST_DIR);
+
+  // Check if package is newer than dist directory
+  return packageStats.mtime > distStats.mtime;
+}
+
+async function createDeploymentPackage(force = false) {
   console.log("📦 Creating deployment package...");
+
+  // Check if package is up to date (unless forced)
+  if (!force && isPackageUpToDate()) {
+    const sizeInMB = (fs.statSync(PACKAGE_PATH).size / 1024 / 1024).toFixed(2);
+    console.log(
+      `✅ Deployment package is up to date: ${PACKAGE_NAME} (${sizeInMB} MB)`
+    );
+    console.log(`📍 Location: ${PACKAGE_PATH}`);
+    console.log(`💡 Use "pnpm package" to force rebuild`);
+    return PACKAGE_PATH;
+  }
 
   // Ensure output directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
@@ -69,7 +96,9 @@ async function createDeploymentPackage() {
 }
 
 if (require.main === module) {
-  createDeploymentPackage().catch(console.error);
+  // Check if force flag is passed
+  const force = process.argv.includes("--force");
+  createDeploymentPackage(force).catch(console.error);
 }
 
-module.exports = { createDeploymentPackage, PACKAGE_PATH };
+module.exports = { createDeploymentPackage, PACKAGE_PATH, isPackageUpToDate };
