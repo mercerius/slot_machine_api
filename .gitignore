@@ -126,4 +126,4 @@ response.json
 .aws/
 
 # Local Copilot instructions
-.github/*
+.github/
