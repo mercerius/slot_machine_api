@@ -12,4 +12,7 @@ module.exports = {
   collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts"],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
+  // Help with cleanup of AWS SDK connections
+  testTimeout: 10000,
+  forceExit: true,
 };
