@@ -1,6 +1,20 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { getAppSecrets, AppSecrets } from "./secrets";
 
+// Global variable to cache secrets across warm invocations
+let cachedSecrets: AppSecrets | null = null;
+
+// Load secrets at module initialization (outside handler)
+const secretsPromise = getAppSecrets()
+  .then((secrets) => {
+    cachedSecrets = secrets;
+    return secrets;
+  })
+  .catch((error) => {
+    console.warn("Failed to preload secrets:", error);
+    return null;
+  });
+
 // Define the slot machine symbols
 const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "🔔", "⭐", "💎", "7️⃣"];
 
@@ -98,8 +112,16 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    // Load application secrets
-    const secrets = await getAppSecrets();
+    // Use cached secrets or load them if not available
+    let secrets = cachedSecrets;
+    if (!secrets) {
+      try {
+        secrets = await secretsPromise;
+      } catch {
+        secrets = await getAppSecrets();
+      }
+      cachedSecrets = secrets;
+    }
 
     // Parse request body if it exists
     let requestBody: SpinRequest = {};
@@ -115,13 +137,13 @@ export const handler = async (
     const bet = requestBody.bet && requestBody.bet > 0 ? requestBody.bet : 1;
 
     // Validate bet amount using secrets configuration
-    const maxBetAmount = secrets.maxBetAmount || 100;
+    const maxBetAmount = secrets?.maxBetAmount || 100;
     if (bet > maxBetAmount) {
       return {
         statusCode: 400,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": secrets.corsOrigins?.[0] || "*",
+          "Access-Control-Allow-Origin": secrets?.corsOrigins?.[0] || "*",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
         },
@@ -138,7 +160,7 @@ export const handler = async (
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": secrets.corsOrigins?.[0] || "*",
+        "Access-Control-Allow-Origin": secrets?.corsOrigins?.[0] || "*",
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
       },
