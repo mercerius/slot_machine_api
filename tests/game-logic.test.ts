@@ -2,57 +2,8 @@
 // Since the internal functions are not exported, we'll test them through the main handler
 // but also create some specific tests for edge cases and game logic
 
-import { APIGatewayProxyEvent } from "aws-lambda";
 import { handler } from "../src/handler";
-
-// Mock event creator helper
-const createMockEvent = (
-  body?: string,
-  httpMethod: string = "POST"
-): APIGatewayProxyEvent => ({
-  body: body || null,
-  headers: {},
-  multiValueHeaders: {},
-  httpMethod,
-  isBase64Encoded: false,
-  path: "/spin",
-  pathParameters: null,
-  queryStringParameters: null,
-  multiValueQueryStringParameters: null,
-  stageVariables: null,
-  requestContext: {
-    accountId: "123456789012",
-    apiId: "api-id",
-    protocol: "HTTP/1.1",
-    httpMethod,
-    path: "/spin",
-    stage: "test",
-    requestId: "test-request-id",
-    requestTime: "09/Apr/2015:12:34:56 +0000",
-    requestTimeEpoch: 1428582896000,
-    identity: {
-      accessKey: null,
-      accountId: null,
-      apiKey: null,
-      apiKeyId: null,
-      caller: null,
-      cognitoAuthenticationProvider: null,
-      cognitoAuthenticationType: null,
-      cognitoIdentityId: null,
-      cognitoIdentityPoolId: null,
-      principalOrgId: null,
-      sourceIp: "127.0.0.1",
-      user: null,
-      userAgent: "Custom User Agent String",
-      userArn: null,
-      clientCert: null,
-    },
-    authorizer: null,
-    resourceId: "123456",
-    resourcePath: "/spin",
-  },
-  resource: "/spin",
-});
+import { createMockEvent } from "./mocks/event-mock";
 
 describe("Slot Machine Game Logic", () => {
   describe("Payout combinations", () => {
@@ -61,7 +12,8 @@ describe("Slot Machine Game Logic", () => {
     it("should have valid symbol distribution", async () => {
       // Test that all symbols appear over multiple spins
       const symbolCounts: Record<string, number> = {};
-      const numSpins = 100;
+      // Increase number of spins for better statistical analysis
+      const numSpins = 1000;
 
       for (let i = 0; i < numSpins; i++) {
         const event = createMockEvent();
@@ -73,11 +25,52 @@ describe("Slot Machine Game Logic", () => {
         });
       }
 
-      // All symbols should appear at least once in 100 spins
+      // All symbols should appear at least once
       validSymbols.forEach((symbol) => {
         expect(symbolCounts[symbol]).toBeGreaterThan(0);
       });
-    });
+
+      // Calculate total symbols seen across all spins
+      const totalSymbols = Object.values(symbolCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      );
+
+      // Calculate expected distribution (equal probability)
+      const expectedPercentage = 1 / validSymbols.length;
+      const allowedDeviation = 0.02; // Allow 2% deviation from perfect distribution
+
+      // Log the distribution for analysis
+      console.log("Symbol distribution over", numSpins, "spins:");
+      validSymbols.forEach((symbol) => {
+        const count = symbolCounts[symbol] || 0;
+        const percentage = count / totalSymbols;
+        console.log(
+          `${symbol}: ${count} occurrences (${(percentage * 100).toFixed(2)}%)`
+        );
+
+        // Assert that distribution is within acceptable deviation from equal probability
+        expect(percentage).toBeGreaterThanOrEqual(
+          expectedPercentage - allowedDeviation
+        );
+        expect(percentage).toBeLessThanOrEqual(
+          expectedPercentage + allowedDeviation
+        );
+      });
+
+      // Calculate chi-square value to test uniformity of distribution
+      const expectedCount = totalSymbols / validSymbols.length;
+      const chiSquare = validSymbols.reduce((sum, symbol) => {
+        const observedCount = symbolCounts[symbol] || 0;
+        const difference = observedCount - expectedCount;
+        return sum + (difference * difference) / expectedCount;
+      }, 0);
+
+      // For 7 degrees of freedom (8 symbols - 1) and 95% confidence,
+      // chi-square should be less than 14.07
+      console.log(`Chi-square value: ${chiSquare.toFixed(2)}`);
+      expect(chiSquare).toBeLessThan(14.07);
+    }, 30000); // Increase timeout for statistical tests
 
     it("should calculate winnings correctly for different bet amounts", async () => {
       const betAmounts = [1, 2, 5, 10, 25, 50, 100];
@@ -112,7 +105,16 @@ describe("Slot Machine Game Logic", () => {
 
     it("should maintain consistent payout structure", async () => {
       // Test that the same combination yields consistent results
-      const results: any[] = [];
+      interface TestResult {
+        reels: string[];
+        isWin: boolean;
+        winAmount: number;
+        combination?: string;
+        timestamp: string;
+        spinId: string;
+      }
+
+      const results: TestResult[] = [];
 
       for (let i = 0; i < 20; i++) {
         const event = createMockEvent(JSON.stringify({ bet: 1 }));
@@ -122,7 +124,7 @@ describe("Slot Machine Game Logic", () => {
       }
 
       // Group results by combination
-      const combinationGroups: Record<string, any[]> = {};
+      const combinationGroups: Record<string, TestResult[]> = {};
       results.forEach((result) => {
         if (result.isWin && result.combination) {
           const key = result.combination;
@@ -248,7 +250,8 @@ describe("Slot Machine Game Logic", () => {
 
     it("should maintain performance under load", async () => {
       const startTime = Date.now();
-      const numRequests = 100;
+      // Reduce from 100 to 50 for faster tests
+      const numRequests = 50;
 
       const promises = Array.from({ length: numRequests }, () => {
         const event = createMockEvent(
@@ -266,8 +269,8 @@ describe("Slot Machine Game Logic", () => {
         expect([200, 400]).toContain(result.statusCode);
       });
 
-      // Performance check - should complete 100 requests in reasonable time
-      expect(totalTime).toBeLessThan(5000); // 5 seconds should be more than enough
+      // Performance check - should complete 50 requests in reasonable time
+      expect(totalTime).toBeLessThan(2000); // 2 seconds should be more than enough
     });
   });
 });
