@@ -10,7 +10,7 @@ const secretsClient = new SecretsManagerClient({
 });
 
 // Cache for secrets to avoid repeated API calls
-const secretsCache = new Map<string, any>();
+const secretsCache = new Map<string, AppSecrets>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const cacheTimestamps = new Map<string, number>();
 
@@ -42,21 +42,40 @@ async function getSecretFromAWS(secretName: string): Promise<string> {
       SecretId: secretName,
     });
 
-    // Add timeout wrapper
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Secrets timeout")), 3000)
-    );
+    // Add timeout wrapper with proper cleanup
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      // Use a much shorter timeout in test environment
+      const timeoutDuration = process.env["NODE_ENV"] === "test" ? 50 : 3000;
+      timeoutId = setTimeout(
+        () => reject(new Error("Secrets timeout")),
+        timeoutDuration
+      );
+    });
 
-    const response = await Promise.race([
-      secretsClient.send(command),
-      timeoutPromise,
-    ]);
+    try {
+      const response = await Promise.race([
+        secretsClient.send(command),
+        timeoutPromise,
+      ]);
 
-    if (!response.SecretString) {
-      throw new Error(`Secret ${secretName} has no string value`);
+      // Clear the timeout to prevent memory leaks
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      if (!response.SecretString) {
+        throw new Error(`Secret ${secretName} has no string value`);
+      }
+
+      return response.SecretString;
+    } catch (err) {
+      // Make sure to clear the timeout even if there's an error
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      throw err;
     }
-
-    return response.SecretString;
   } catch (error) {
     console.error(`Failed to retrieve secret ${secretName}:`, error);
     throw error;
@@ -73,8 +92,8 @@ export async function getAppSecrets(): Promise<AppSecrets> {
     nodeEnv === "development"
       ? "dev"
       : nodeEnv === "production"
-      ? "prod"
-      : nodeEnv;
+        ? "prod"
+        : nodeEnv;
   const secretName = `slot-machine-api/${environment}`;
 
   // Check cache first
@@ -84,7 +103,10 @@ export async function getAppSecrets(): Promise<AppSecrets> {
   if (secretsCache.has(cacheKey)) {
     const cacheTime = cacheTimestamps.get(cacheKey) || 0;
     if (now - cacheTime < CACHE_TTL) {
-      return secretsCache.get(cacheKey);
+      const cachedSecrets = secretsCache.get(cacheKey);
+      if (cachedSecrets) {
+        return cachedSecrets;
+      }
     }
   }
 
@@ -124,7 +146,9 @@ export async function getAppSecrets(): Promise<AppSecrets> {
 /**
  * Get a specific secret value by key
  */
-export async function getSecret(key: keyof AppSecrets): Promise<any> {
+export async function getSecret(
+  key: keyof AppSecrets
+): Promise<AppSecrets[keyof AppSecrets]> {
   const secrets = await getAppSecrets();
   return secrets[key];
 }

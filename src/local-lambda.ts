@@ -3,7 +3,7 @@ import { handler } from "./handler";
 
 // Simple Lambda local simulator
 class LocalLambdaSimulator {
-  private createMockEvent(body?: any): APIGatewayProxyEvent {
+  private createMockEvent(body?: unknown): APIGatewayProxyEvent {
     return {
       httpMethod: "POST",
       path: "/spin",

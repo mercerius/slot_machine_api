@@ -4,16 +4,19 @@ import { getAppSecrets, AppSecrets } from "./secrets";
 // Global variable to cache secrets across warm invocations
 let cachedSecrets: AppSecrets | null = null;
 
-// Load secrets at module initialization (outside handler)
-const secretsPromise = getAppSecrets()
-  .then((secrets) => {
-    cachedSecrets = secrets;
-    return secrets;
-  })
-  .catch((error) => {
+// Function to preload secrets, can be called at startup
+export async function preloadSecrets(): Promise<AppSecrets | null> {
+  if (cachedSecrets) {
+    return cachedSecrets;
+  }
+  try {
+    cachedSecrets = await getAppSecrets();
+    return cachedSecrets;
+  } catch (error) {
     console.warn("Failed to preload secrets:", error);
     return null;
-  });
+  }
+}
 
 // Define the slot machine symbols
 const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "🔔", "⭐", "💎", "7️⃣"];
@@ -51,7 +54,11 @@ interface SpinRequest {
 // Generate a random symbol
 function getRandomSymbol(): string {
   const index = Math.floor(Math.random() * SYMBOLS.length);
-  return SYMBOLS[index]!;
+  const symbol = SYMBOLS[index];
+  if (!symbol) {
+    throw new Error("Failed to get random symbol");
+  }
+  return symbol;
 }
 
 // Generate a unique spin ID
@@ -68,21 +75,27 @@ function calculateWinnings(
 
   // Check for exact matches first (3 symbols)
   if (PAYOUTS[combination]) {
-    return {
-      isWin: true,
-      winAmount: PAYOUTS[combination]! * bet,
-      combination,
-    };
+    const payout = PAYOUTS[combination];
+    if (payout) {
+      return {
+        isWin: true,
+        winAmount: payout * bet,
+        combination,
+      };
+    }
   }
 
   // Check for partial matches (2 symbols)
   const twoSymbolCombo = reels.slice(0, 2).join("");
   if (PAYOUTS[twoSymbolCombo]) {
-    return {
-      isWin: true,
-      winAmount: PAYOUTS[twoSymbolCombo]! * bet,
-      combination: twoSymbolCombo,
-    };
+    const payout = PAYOUTS[twoSymbolCombo];
+    if (payout) {
+      return {
+        isWin: true,
+        winAmount: payout * bet,
+        combination: twoSymbolCombo,
+      };
+    }
   }
 
   return {
@@ -116,7 +129,7 @@ export const handler = async (
     let secrets = cachedSecrets;
     if (!secrets) {
       try {
-        secrets = await secretsPromise;
+        secrets = await preloadSecrets();
       } catch {
         secrets = await getAppSecrets();
       }

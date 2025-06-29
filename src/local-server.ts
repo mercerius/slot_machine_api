@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { handler, corsHandler } from "./handler";
 
