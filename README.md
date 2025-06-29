@@ -29,8 +29,11 @@ src/
 ├── secrets.ts         # AWS Secrets Manager integration
 ├── local-server.ts    # Express dev server
 └── local-lambda.ts    # Local Lambda simulator
+tests/                 # Jest test files
 scripts/               # Deployment & management scripts
 examples/              # Example secret configurations
+eslint.config.js       # ESLint configuration (modern flat config)
+.prettierrc.json       # Prettier formatting rules
 ```
 
 ## 💻 Local Development
@@ -41,12 +44,57 @@ pnpm dev
 
 # Local Lambda simulator
 pnpm dev:lambda
+
+# Code quality & formatting
+pnpm lint              # Check for linting errors
+pnpm lint:fix          # Fix auto-fixable linting errors
+pnpm format            # Format all files with Prettier
+pnpm format:check      # Check if files are properly formatted
+
+# Testing
+pnpm test              # Run Jest tests
+pnpm test:watch        # Run tests in watch mode
+pnpm test:coverage     # Run tests with coverage report
 ```
 
 **API Endpoints:**
 
 - `GET /health` - Health check
 - `POST /spin` - Spin slot machine with `{"bet": 5}`
+
+## 🔍 Code Quality & Standards
+
+This project enforces strict code quality standards with modern tooling:
+
+### **ESLint + TypeScript**
+
+- ✅ **Modern ESLint v9** with flat configuration format
+- ✅ **Strict TypeScript rules** with type safety enforcement
+- ✅ **No `any` types** - all code is properly typed
+- ✅ **Import/export validation** and unused variable detection
+- ✅ **Separate configs** for source code and test files
+
+### **Prettier Formatting**
+
+- ✅ **Consistent code style** across the entire project
+- ✅ **Automatic formatting** with standard rules
+- ✅ **Pre-commit hooks ready** for team development
+
+### **Development Workflow**
+
+```bash
+# Before committing code, run:
+pnpm lint:fix          # Fix linting issues
+pnpm format            # Format code consistently
+pnpm test              # Ensure tests pass
+pnpm build             # Verify TypeScript compiles
+```
+
+**VS Code Integration:**
+
+- Install the ESLint and Prettier extensions
+- Code will be linted and formatted automatically on save
+- IntelliSense provides real-time error detection
 
 ## 🔧 Configuration & Secrets
 
@@ -159,6 +207,17 @@ The project includes smart packaging to avoid unnecessary rebuilds:
 pnpm dev              # Start dev server
 pnpm build            # Compile TypeScript
 
+# Code Quality
+pnpm lint             # Check for linting errors
+pnpm lint:fix         # Fix auto-fixable linting errors
+pnpm format           # Format all files with Prettier
+pnpm format:check     # Check formatting without changes
+
+# Testing
+pnpm test             # Run tests
+pnpm test:watch       # Run tests in watch mode
+pnpm test:coverage    # Run tests with coverage
+
 # AWS Management
 pnpm create-iam-role  # Setup IAM (one-time, automatic)
 
@@ -206,6 +265,12 @@ PORT=3001 pnpm dev
 - AWS CLI configured
 - AWS account with IAM/Lambda permissions
 
+**Recommended VS Code Extensions:**
+
+- ESLint (`ms-vscode.vscode-eslint`)
+- Prettier (`esbenp.prettier-vscode`)
+- TypeScript Importer (`pmneo.tsimporter`)
+
 ## Security Features
 
 - ✅ **Automatic AWS configuration** - Scripts detect account ID and generate ARNs
@@ -214,6 +279,8 @@ PORT=3001 pnpm dev
 - ✅ **IAM least privilege access** - Minimal required permissions
 - ✅ **Automatic secret caching** - Optimized secret retrieval
 - ✅ **Zero manual configuration** - Fully automated deployment
+- ✅ **Type-safe code** - No `any` types, strict TypeScript enforcement
+- ✅ **Code quality standards** - ESLint + Prettier for consistent, secure code
 
 **🎯 Fully Automated Deployment:**
 
