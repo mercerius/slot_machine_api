@@ -3,8 +3,8 @@
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const { PACKAGE_PATH } = require("./package.js");
-const { IAM_CONFIG } = require("./create-iam-role.js");
+const { PACKAGE_PATH } = require("./package.cjs");
+const { IAM_CONFIG } = require("./create-iam-role.cjs");
 
 // Configuration
 const DEPLOYMENT_CONFIG = {

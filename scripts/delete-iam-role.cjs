@@ -1,5 +1,5 @@
 const { execSync } = require("child_process");
-const { IAM_CONFIG } = require("./create-iam-role");
+const { IAM_CONFIG } = require("./create-iam-role.cjs");
 
 function executeCommand(command, description, silent = false) {
   if (!silent) {
