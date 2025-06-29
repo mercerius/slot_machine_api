@@ -13,7 +13,9 @@ pnpm create-iam-role
 pnpm secrets:create:dev    # Optional: Create dev secrets
 
 # 3. Package and Deploy
-pnpm package && pnpm deploy:dev
+pnpm deploy:dev            # Clean build + deploy (safe)
+# OR for faster iteration:
+pnpm deploy:dev:quick      # Deploy without rebuilding if up-to-date
 
 # 4. Test
 pnpm invoke
@@ -71,15 +73,60 @@ pnpm secrets:update:dev examples/dev-secrets.json
 ## 🌩️ Deployment
 
 ```bash
-# Deploy environments
-pnpm package           # Package Lambda function
-pnpm deploy:dev        # Development
-pnpm deploy:prod       # Production
+# Package Lambda function
+pnpm package           # Clean build + package (always rebuilds)
+pnpm package:quick     # Smart package (only if outdated)
+pnpm package:force     # Force repackage without rebuild
+
+# Deploy environments (with clean build)
+pnpm deploy:dev        # Development (always rebuilds)
+pnpm deploy:prod       # Production (always rebuilds)
+
+# Quick deploy (skips rebuild if package is up-to-date)
+pnpm deploy:dev:quick  # Development (smart packaging)
+pnpm deploy:prod:quick # Production (smart packaging)
 
 # Test deployment
 pnpm invoke           # Test function
 pnpm logs             # View logs
 ```
+
+### 🚀 Smart Deployment Workflow
+
+**For Development (avoid double builds):**
+
+```bash
+# After making code changes
+pnpm build                    # Build once
+pnpm deploy:dev:quick        # Deploy without rebuilding
+
+# Or if you've already built manually
+pnpm package:quick && pnpm deploy:dev:quick
+```
+
+**For Production (safe approach):**
+
+```bash
+pnpm deploy:prod             # Always does clean build for safety
+# OR for speed if you're confident:
+pnpm deploy:prod:quick       # Uses existing build if up-to-date
+```
+
+### ⚡ Build Optimization
+
+The project includes smart packaging to avoid unnecessary rebuilds:
+
+- **`:quick` scripts** check if your package is newer than your source code
+- **Automatic detection** of when rebuilding is actually needed
+- **Time savings** during development when making frequent deployments
+- **Safety options** available for production deployments
+
+**When to use quick scripts:**
+
+- ✅ Development iterations after `pnpm build`
+- ✅ Re-deploying without code changes
+- ✅ Testing configuration changes
+- ❌ Production releases (use regular scripts for safety)
 
 ## 🎮 API Response
 
@@ -114,8 +161,16 @@ pnpm build            # Compile TypeScript
 
 # AWS Management
 pnpm create-iam-role  # Setup IAM (one-time, automatic)
-pnpm package          # Package for deployment
-pnpm deploy:dev       # Deploy to AWS (automatic role detection)
+
+# Packaging & Deployment
+pnpm package          # Clean build + package (safe, always rebuilds)
+pnpm package:quick    # Smart package (only if dist changed)
+pnpm deploy:dev       # Deploy to dev (with clean build)
+pnpm deploy:dev:quick # Deploy to dev (skip rebuild if up-to-date)
+pnpm deploy:prod      # Deploy to prod (with clean build)
+pnpm deploy:prod:quick # Deploy to prod (skip rebuild if up-to-date)
+
+# Testing & Monitoring
 pnpm invoke           # Test function
 pnpm logs             # View logs
 
