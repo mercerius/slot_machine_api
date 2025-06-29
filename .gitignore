@@ -124,3 +124,6 @@ cdk.out
 # AWS Lambda specific
 response.json
 .aws/
+
+# Local Copilot instructions
+.github/*
