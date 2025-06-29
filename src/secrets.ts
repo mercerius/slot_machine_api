@@ -3,9 +3,10 @@ import {
   GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
 
-// Initialize the Secrets Manager client
+// Initialize the Secrets Manager client with optimized configuration
 const secretsClient = new SecretsManagerClient({
   region: process.env["AWS_REGION"] || "us-east-1",
+  maxAttempts: 2, // Reduce retry attempts for faster failure
 });
 
 // Cache for secrets to avoid repeated API calls
@@ -41,7 +42,15 @@ async function getSecretFromAWS(secretName: string): Promise<string> {
       SecretId: secretName,
     });
 
-    const response = await secretsClient.send(command);
+    // Add timeout wrapper
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Secrets timeout")), 3000)
+    );
+
+    const response = await Promise.race([
+      secretsClient.send(command),
+      timeoutPromise,
+    ]);
 
     if (!response.SecretString) {
       throw new Error(`Secret ${secretName} has no string value`);
@@ -58,7 +67,14 @@ async function getSecretFromAWS(secretName: string): Promise<string> {
  * Get and parse application secrets with caching
  */
 export async function getAppSecrets(): Promise<AppSecrets> {
-  const environment = process.env["NODE_ENV"] || "dev";
+  const nodeEnv = process.env["NODE_ENV"] || "dev";
+  // Map common NODE_ENV values to our secret naming convention
+  const environment =
+    nodeEnv === "development"
+      ? "dev"
+      : nodeEnv === "production"
+      ? "prod"
+      : nodeEnv;
   const secretName = `slot-machine-api/${environment}`;
 
   // Check cache first
