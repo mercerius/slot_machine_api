@@ -1,27 +1,27 @@
-# Slot Machine API - AWS Lambda
+# Slot Machine API
 
-A serverless slot machine API built with TypeScript and deployed to AWS Lambda with AWS Secrets Manager for secure configuration.
+A serverless slot machine API built with TypeScript and deployed to AWS Lambda. Configuration is managed through AWS Secrets Manager, keeping all sensitive values out of the codebase.
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # 1. Install dependencies and build
 pnpm install && pnpm build
 
-# 2. Setup AWS (one-time)
+# 2. Set up AWS (one-time)
 pnpm create-iam-role
-pnpm secrets:create:dev    # Optional: Create dev secrets
+pnpm secrets:create:dev    # Optional: create dev secrets
 
-# 3. Package and Deploy
-pnpm deploy:dev            # Clean build + deploy (safe)
-# OR for faster iteration:
-pnpm deploy:dev:quick      # Deploy without rebuilding if up-to-date
+# 3. Deploy
+pnpm deploy:dev            # Clean build + deploy
+# or for faster iteration:
+pnpm deploy:dev:quick      # Deploy without rebuilding if already up-to-date
 
 # 4. Test
 pnpm invoke
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
@@ -30,13 +30,13 @@ src/
 ├── local-server.ts    # Express dev server
 └── local-lambda.ts    # Local Lambda simulator
 tests/                 # Jest test files
-scripts/               # Deployment & management scripts
+scripts/               # Deployment and management scripts
 examples/              # Example secret configurations
-eslint.config.js       # ESLint configuration (modern flat config)
+eslint.config.js       # ESLint configuration (flat config format)
 .prettierrc.json       # Prettier formatting rules
 ```
 
-## 💻 Local Development
+## Local Development
 
 ```bash
 # Express server (http://localhost:3000)
@@ -45,7 +45,7 @@ pnpm dev
 # Local Lambda simulator
 pnpm dev:lambda
 
-# Code quality & formatting
+# Code quality and formatting
 pnpm lint              # Check for linting errors
 pnpm lint:fix          # Fix auto-fixable linting errors
 pnpm format            # Format all files with Prettier
@@ -60,48 +60,43 @@ pnpm test:coverage     # Run tests with coverage report
 **API Endpoints:**
 
 - `GET /health` - Health check
-- `POST /spin` - Spin slot machine with `{"bet": 5}`
+- `POST /spin` - Spin the slot machine with `{"bet": 5}`
 
-## 🔍 Code Quality & Standards
+## Code Quality
 
-This project enforces strict code quality standards with modern tooling:
+This project enforces strict code quality standards using modern tooling.
 
-### **ESLint + TypeScript**
+### ESLint + TypeScript
 
-- ✅ **Modern ESLint v9** with flat configuration format
-- ✅ **Strict TypeScript rules** with type safety enforcement
-- ✅ **No `any` types** - all code is properly typed
-- ✅ **Import/export validation** and unused variable detection
-- ✅ **Separate configs** for source code and test files
+- ESLint v9 with flat configuration format
+- Strict TypeScript rules with full type safety — no `any` types
+- Import/export validation and unused variable detection
+- Separate configs for source and test files
 
-### **Prettier Formatting**
+### Prettier
 
-- ✅ **Consistent code style** across the entire project
-- ✅ **Automatic formatting** with standard rules
-- ✅ **Pre-commit hooks ready** for team development
+- Consistent code style across the entire project
+- Standard formatting rules applied automatically
+- Ready for pre-commit hooks in a team environment
 
-### **Development Workflow**
+### Recommended workflow before committing
 
 ```bash
-# Before committing code, run:
 pnpm lint:fix          # Fix linting issues
-pnpm format            # Format code consistently
+pnpm format            # Format code
 pnpm test              # Ensure tests pass
 pnpm build             # Verify TypeScript compiles
 ```
 
 **VS Code Integration:**
 
-- Install the ESLint and Prettier extensions
-- Code will be linted and formatted automatically on save
-- IntelliSense provides real-time error detection
+Install the ESLint and Prettier extensions. Files will be linted and formatted automatically on save, with real-time error detection via IntelliSense.
 
-## 🔧 Configuration & Secrets
+## Configuration and Secrets
 
-The app uses AWS Secrets Manager for secure configuration. No manual config files needed.
+The app uses AWS Secrets Manager for all configuration. No manual config files are required.
 
 ```bash
-# Manage secrets
 pnpm secrets:get:dev        # View secrets
 pnpm secrets:create:dev     # Create with defaults
 pnpm secrets:update:dev examples/dev-secrets.json
@@ -118,89 +113,84 @@ pnpm secrets:update:dev examples/dev-secrets.json
 }
 ```
 
-## 🌩️ Deployment
+## Deployment
 
 ```bash
-# Package Lambda function
+# Package the Lambda function
 pnpm package           # Clean build + package (always rebuilds)
-pnpm package:quick     # Smart package (only if outdated)
-pnpm package:force     # Force repackage without rebuild
+pnpm package:quick     # Smart package (only if source has changed)
+pnpm package:force     # Force repackage without rebuilding
 
-# Deploy environments (with clean build)
-pnpm deploy:dev        # Development (always rebuilds)
-pnpm deploy:prod       # Production (always rebuilds)
+# Deploy to an environment (includes clean build)
+pnpm deploy:dev        # Development
+pnpm deploy:prod       # Production
 
-# Quick deploy (skips rebuild if package is up-to-date)
-pnpm deploy:dev:quick  # Development (smart packaging)
-pnpm deploy:prod:quick # Production (smart packaging)
+# Quick deploy (skips rebuild if package is already up-to-date)
+pnpm deploy:dev:quick  # Development
+pnpm deploy:prod:quick # Production
 
-# Test deployment
-pnpm invoke           # Test function
-pnpm logs             # View logs
+# Test and monitor
+pnpm invoke            # Invoke the deployed function
+pnpm logs              # View CloudWatch logs
 ```
 
-### 🚀 Smart Deployment Workflow
+### Smart Deployment Workflow
 
-**For Development (avoid double builds):**
+**Development (avoid redundant builds):**
 
 ```bash
-# After making code changes
-pnpm build                    # Build once
-pnpm deploy:dev:quick        # Deploy without rebuilding
+pnpm build
+pnpm deploy:dev:quick        # Deploys without rebuilding
 
-# Or if you've already built manually
+# Or if you've already packaged manually:
 pnpm package:quick && pnpm deploy:dev:quick
 ```
 
-**For Production (safe approach):**
+**Production (safe approach):**
 
 ```bash
-pnpm deploy:prod             # Always does clean build for safety
-# OR for speed if you're confident:
-pnpm deploy:prod:quick       # Uses existing build if up-to-date
+pnpm deploy:prod             # Always performs a clean build
+# If you're confident the build is current:
+pnpm deploy:prod:quick
 ```
 
-### ⚡ Build Optimization
+### Build Optimization
 
-The project includes smart packaging to avoid unnecessary rebuilds:
+The `:quick` scripts check whether the current package is newer than the source files and skip unnecessary rebuilds. This is useful during active development but should be avoided for production releases where a clean build is preferred.
 
-- **`:quick` scripts** check if your package is newer than your source code
-- **Automatic detection** of when rebuilding is actually needed
-- **Time savings** during development when making frequent deployments
-- **Safety options** available for production deployments
+Use `:quick` when:
 
-**When to use quick scripts:**
+- Iterating in development after an initial `pnpm build`
+- Re-deploying without code changes
+- Testing configuration-only changes
 
-- ✅ Development iterations after `pnpm build`
-- ✅ Re-deploying without code changes
-- ✅ Testing configuration changes
-- ❌ Production releases (use regular scripts for safety)
+Use the standard scripts for production releases.
 
-## 🎮 API Response
+## API Response
 
-**Win Example:**
+**Win example:**
 
 ```json
 {
-  "reels": ["💎", "💎", "💎"],
+  "reels": ["diamond", "diamond", "diamond"],
   "isWin": true,
   "winAmount": 5000,
-  "combination": "💎💎💎",
+  "combination": "diamond diamond diamond",
   "timestamp": "2025-06-28T10:30:00.000Z"
 }
 ```
 
 ### Payout Table
 
-| Symbols | 3 Match | 2 Match |
-| ------- | ------- | ------- |
-| 💎💎💎  | 1000x   | 20x     |
-| 7️⃣7️⃣7️⃣  | 500x    | 15x     |
-| ⭐⭐⭐  | 250x    | 10x     |
-| 🔔🔔🔔  | 100x    | 5x      |
-| 🍒🍒    | 10x     | 2x      |
+| Symbol    | 3 Match | 2 Match |
+| --------- | ------- | ------- |
+| Diamond   | 1000x   | 20x     |
+| Seven     | 500x    | 15x     |
+| Star      | 250x    | 10x     |
+| Bell      | 100x    | 5x      |
+| Cherry    | 10x     | 2x      |
 
-## 📝 Essential Scripts
+## Scripts Reference
 
 ```bash
 # Development
@@ -211,34 +201,32 @@ pnpm build            # Compile TypeScript
 pnpm lint             # Check for linting errors
 pnpm lint:fix         # Fix auto-fixable linting errors
 pnpm format           # Format all files with Prettier
-pnpm format:check     # Check formatting without changes
+pnpm format:check     # Check formatting without making changes
 
 # Testing
 pnpm test             # Run tests
 pnpm test:watch       # Run tests in watch mode
-pnpm test:coverage    # Run tests with coverage
+pnpm test:coverage    # Run tests with coverage report
 
-# AWS Management
-pnpm create-iam-role  # Setup IAM (one-time, automatic)
+# AWS
+pnpm create-iam-role  # Set up IAM role (one-time)
 
-# Packaging & Deployment
-pnpm package          # Clean build + package (safe, always rebuilds)
-pnpm package:quick    # Smart package (only if dist changed)
-pnpm deploy:dev       # Deploy to dev (with clean build)
-pnpm deploy:dev:quick # Deploy to dev (skip rebuild if up-to-date)
-pnpm deploy:prod      # Deploy to prod (with clean build)
+# Packaging and Deployment
+pnpm package           # Clean build + package
+pnpm package:quick     # Smart package (only if source changed)
+pnpm deploy:dev        # Deploy to dev (with clean build)
+pnpm deploy:dev:quick  # Deploy to dev (skip rebuild if up-to-date)
+pnpm deploy:prod       # Deploy to prod (with clean build)
 pnpm deploy:prod:quick # Deploy to prod (skip rebuild if up-to-date)
+pnpm invoke            # Invoke the deployed function
+pnpm logs              # View logs
 
-# Testing & Monitoring
-pnpm invoke           # Test function
-pnpm logs             # View logs
-
-# Secrets Management
+# Secrets
 pnpm secrets:create:dev   # Create dev secrets
-pnpm secrets:get:dev      # View secrets
+pnpm secrets:get:dev      # View dev secrets
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 **AWS CLI not configured:**
 
@@ -252,7 +240,7 @@ aws configure
 pnpm create-iam-role
 ```
 
-**Port in use:**
+**Port already in use:**
 
 ```bash
 PORT=3001 pnpm dev
@@ -263,41 +251,33 @@ PORT=3001 pnpm dev
 - Node.js v20+
 - pnpm (`npm install -g pnpm`)
 - AWS CLI configured
-- AWS account with IAM/Lambda permissions
+- AWS account with IAM and Lambda permissions
 
-**Recommended VS Code Extensions:**
+**Recommended VS Code extensions:**
 
 - ESLint (`ms-vscode.vscode-eslint`)
 - Prettier (`esbenp.prettier-vscode`)
 - TypeScript Importer (`pmneo.tsimporter`)
 
-## Security Features
+## Security
 
-- ✅ **Automatic AWS configuration** - Scripts detect account ID and generate ARNs
-- ✅ **AWS Secrets Manager integration** - No secrets in code
-- ✅ **Environment-based configuration** - Separate dev/prod settings
-- ✅ **IAM least privilege access** - Minimal required permissions
-- ✅ **Automatic secret caching** - Optimized secret retrieval
-- ✅ **Zero manual configuration** - Fully automated deployment
-- ✅ **Type-safe code** - No `any` types, strict TypeScript enforcement
-- ✅ **Code quality standards** - ESLint + Prettier for consistent, secure code
-
-**🎯 Fully Automated Deployment:**
-
-- No manual ARN updates required
-- Scripts automatically detect your AWS account
-- Zero-configuration role and policy management
+- AWS Secrets Manager integration keeps all secrets out of the codebase
+- Deployment scripts automatically detect the AWS account ID and generate ARNs — no manual updates required
+- Environment-based configuration with separate dev and prod secrets
+- IAM role uses least-privilege permissions
+- Secret caching is built in to reduce Secrets Manager API calls
+- Strict TypeScript with no `any` types throughout the codebase
+- ESLint and Prettier enforce consistent, reviewable code
 
 ## Production Configuration
 
-For production deployment, update these in AWS Secrets Manager:
+Before going to production, update the following in AWS Secrets Manager:
 
-1. **CORS Origins**: Change from `["*"]` to your domain
-2. **API Keys**: Add real payment/analytics keys
-3. **Rate Limits**: Adjust `maxBetAmount` as needed
-4. **Monitoring**: Setup CloudWatch alerts
+1. **CORS Origins** — change from `["*"]` to your actual domain
+2. **API Keys** — add any real payment or analytics keys
+3. **Rate Limits** — adjust `maxBetAmount` as appropriate
+4. **Monitoring** — set up CloudWatch alerts
 
-## Cost Estimate
+## Cost
 
-**AWS Free Tier:** 1M requests + 400K GB-seconds/month
-**Light usage** (< 10K requests/month): **$0.00**
+AWS Free Tier includes 1 million requests and 400,000 GB-seconds per month. At light usage (under 10,000 requests/month), the expected cost is $0.00.
