@@ -1,11 +1,11 @@
-import { getAppConfig } from "../src/config";
-import { spinSlotMachine } from "../src/core/game";
+import { getAppConfig } from "../src/config.js";
+import { spinSlotMachine } from "../src/core/game.js";
 import {
   createCorsHeaders,
   normalizeBet,
   parseSpinRequest,
   resolveCorsOrigin,
-} from "../src/core/http";
+} from "../src/core/http.js";
 
 interface VercelLikeRequest {
   method?: string;
