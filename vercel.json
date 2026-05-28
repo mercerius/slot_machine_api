@@ -1,5 +1,15 @@
 {
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/spin",
+      "destination": "/api/spin"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    }
+  ],
   "functions": {
     "api/*.ts": {
       "maxDuration": 10

@@ -48,12 +48,13 @@ export default function spinHandler(
     return;
   }
 
-  if (req.method !== "POST") {
+  if (req.method !== "POST" && req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  const requestBody = parseSpinRequest(bodyToString(req.body));
+  const requestBody =
+    req.method === "POST" ? parseSpinRequest(bodyToString(req.body)) : {};
   const bet = normalizeBet(requestBody.bet);
 
   if (bet > config.maxBetAmount) {

@@ -59,6 +59,15 @@ describe("Vercel handlers", () => {
     expect(response.payload).toEqual({ error: "Maximum bet amount is 100" });
   });
 
+  it("should allow GET spin with default bet", () => {
+    const { response } = createMockResponse();
+    spinHandler({ method: "GET" }, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toHaveProperty("reels");
+    expect(response.payload).toHaveProperty("spinId");
+  });
+
   it("should handle CORS preflight", () => {
     const { response, headers } = createMockResponse();
     spinHandler({ method: "OPTIONS" }, response);
