@@ -4,8 +4,24 @@ import tsparser from "@typescript-eslint/parser";
 import prettier from "eslint-plugin-prettier";
 import prettierConfig from "eslint-config-prettier";
 
+const baseTsRules = {
+  ...js.configs.recommended.rules,
+  ...tseslint.configs.recommended.rules,
+  ...prettierConfig.rules,
+  "prettier/prettier": "error",
+  "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+  "@typescript-eslint/explicit-function-return-type": "off",
+  "@typescript-eslint/explicit-module-boundary-types": "off",
+  "@typescript-eslint/no-explicit-any": "warn",
+  "@typescript-eslint/no-non-null-assertion": "warn",
+  "no-console": "off",
+  "no-var": "error",
+  "prefer-const": "error",
+  eqeqeq: ["error", "always"],
+  curly: "error",
+};
+
 export default [
-  // Apply to source TypeScript files
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
     languageOptions: {
@@ -35,27 +51,27 @@ export default [
       "@typescript-eslint": tseslint,
       prettier: prettier,
     },
-    rules: {
-      ...js.configs.recommended.rules,
-      ...tseslint.configs.recommended.rules,
-      ...prettierConfig.rules,
-      "prettier/prettier": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
-      "no-console": "off",
-      "no-var": "error",
-      "prefer-const": "error",
-      eqeqeq: ["error", "always"],
-      curly: "error",
-    },
+    rules: baseTsRules,
   },
-  // Common TypeScript configuration for all test files
+  {
+    files: ["api/**/*.ts"],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+      },
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+      prettier: prettier,
+    },
+    rules: baseTsRules,
+  },
   {
     files: ["tests/**/*.ts"],
     languageOptions: {
@@ -96,26 +112,11 @@ export default [
       prettier: prettier,
     },
     rules: {
-      ...js.configs.recommended.rules,
-      ...tseslint.configs.recommended.rules,
-      ...prettierConfig.rules,
-      "prettier/prettier": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
+      ...baseTsRules,
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
-      "no-console": "off",
-      "no-var": "error",
-      "prefer-const": "error",
-      eqeqeq: ["error", "always"],
-      curly: "error",
     },
   },
-  // Test files configuration
   {
     files: ["**/*.test.ts", "**/*.spec.ts"],
     rules: {
@@ -123,7 +124,6 @@ export default [
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
-  // Mock files configuration
   {
     files: ["tests/__mocks__/**/*.ts", "tests/mocks/**/*.ts", "tests/setup.ts"],
     languageOptions: {
@@ -164,7 +164,6 @@ export default [
       "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
-  // Ignore patterns
   {
     ignores: [
       "node_modules/",

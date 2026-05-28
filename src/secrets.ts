@@ -1,151 +1,33 @@
-import {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} from "@aws-sdk/client-secrets-manager";
-
-// Initialize the Secrets Manager client with optimized configuration
-const secretsClient = new SecretsManagerClient({
-  region: process.env["AWS_REGION"] || "us-east-1",
-  maxAttempts: 2, // Reduce retry attempts for faster failure
-});
-
-// Cache for secrets to avoid repeated API calls
-const secretsCache = new Map<string, AppSecrets>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-const cacheTimestamps = new Map<string, number>();
+import { AppConfig, clearAppConfigCache, getAppConfig } from "./config";
 
 export interface AppSecrets {
-  // Game configuration secrets
   maxBetAmount?: number;
   jackpotMultiplier?: number;
-
-  // API configuration secrets
   corsOrigins?: string[];
   rateLimit?: number;
-
-  // Environment-specific secrets
   environment?: string;
   debugMode?: boolean;
-
-  // External API keys (if needed in future)
   apiKeys?: {
     [serviceName: string]: string;
   };
 }
 
-/**
- * Get a secret value from AWS Secrets Manager with caching
- */
-async function getSecretFromAWS(secretName: string): Promise<string> {
-  try {
-    const command = new GetSecretValueCommand({
-      SecretId: secretName,
-    });
-
-    // Add timeout wrapper with proper cleanup
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      // Use a much shorter timeout in test environment
-      const timeoutDuration = process.env["NODE_ENV"] === "test" ? 50 : 3000;
-      timeoutId = setTimeout(
-        () => reject(new Error("Secrets timeout")),
-        timeoutDuration
-      );
-    });
-
-    try {
-      const response = await Promise.race([
-        secretsClient.send(command),
-        timeoutPromise,
-      ]);
-
-      // Clear the timeout to prevent memory leaks
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-
-      if (!response.SecretString) {
-        throw new Error(`Secret ${secretName} has no string value`);
-      }
-
-      return response.SecretString;
-    } catch (err) {
-      // Make sure to clear the timeout even if there's an error
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      throw err;
-    }
-  } catch (error) {
-    console.error(`Failed to retrieve secret ${secretName}:`, error);
-    throw error;
-  }
+function toAppSecrets(config: AppConfig): AppSecrets {
+  return {
+    maxBetAmount: config.maxBetAmount,
+    jackpotMultiplier: config.jackpotMultiplier,
+    corsOrigins: config.corsOrigins,
+    rateLimit: config.rateLimit,
+    environment: config.environment,
+    debugMode: config.debugMode,
+    apiKeys: config.apiKeys,
+  };
 }
 
-/**
- * Get and parse application secrets with caching
- */
 export async function getAppSecrets(): Promise<AppSecrets> {
-  const nodeEnv = process.env["NODE_ENV"] || "dev";
-  // Map common NODE_ENV values to our secret naming convention
-  const environment =
-    nodeEnv === "development"
-      ? "dev"
-      : nodeEnv === "production"
-        ? "prod"
-        : nodeEnv;
-  const secretName = `slot-machine-api/${environment}`;
-
-  // Check cache first
-  const now = Date.now();
-  const cacheKey = secretName;
-
-  if (secretsCache.has(cacheKey)) {
-    const cacheTime = cacheTimestamps.get(cacheKey) || 0;
-    if (now - cacheTime < CACHE_TTL) {
-      const cachedSecrets = secretsCache.get(cacheKey);
-      if (cachedSecrets) {
-        return cachedSecrets;
-      }
-    }
-  }
-
-  try {
-    const secretString = await getSecretFromAWS(secretName);
-    const secrets: AppSecrets = JSON.parse(secretString);
-
-    // Cache the result
-    secretsCache.set(cacheKey, secrets);
-    cacheTimestamps.set(cacheKey, now);
-
-    return secrets;
-  } catch (error) {
-    console.warn(
-      `Failed to load secrets from AWS Secrets Manager: ${error}. Using defaults.`
-    );
-
-    // Return default configuration if secrets can't be loaded
-    const defaultSecrets: AppSecrets = {
-      maxBetAmount: 100,
-      jackpotMultiplier: 1000,
-      corsOrigins: ["*"],
-      rateLimit: 100,
-      environment,
-      debugMode: environment === "dev",
-      apiKeys: {},
-    };
-
-    // Cache defaults for a shorter time
-    secretsCache.set(cacheKey, defaultSecrets);
-    cacheTimestamps.set(cacheKey, now);
-
-    return defaultSecrets;
-  }
+  return toAppSecrets(getAppConfig());
 }
 
-/**
- * Get a specific secret value by key
- */
 export async function getSecret(
   key: keyof AppSecrets
 ): Promise<AppSecrets[keyof AppSecrets]> {
@@ -153,25 +35,10 @@ export async function getSecret(
   return secrets[key];
 }
 
-/**
- * Clear the secrets cache (useful for testing or manual refresh)
- */
 export function clearSecretsCache(): void {
-  secretsCache.clear();
-  cacheTimestamps.clear();
+  clearAppConfigCache();
 }
 
-/**
- * Check if secrets are being loaded from AWS or using defaults
- */
 export async function isUsingAWSSecrets(): Promise<boolean> {
-  const environment = process.env["NODE_ENV"] || "dev";
-  const secretName = `slot-machine-api/${environment}`;
-
-  try {
-    await getSecretFromAWS(secretName);
-    return true;
-  } catch {
-    return false;
-  }
+  return false;
 }

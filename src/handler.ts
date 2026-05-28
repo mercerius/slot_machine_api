@@ -1,14 +1,20 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { getAppSecrets, AppSecrets } from "./secrets";
+import { spinSlotMachine } from "./core/game";
+import {
+  createCorsHeaders,
+  normalizeBet,
+  parseSpinRequest,
+  resolveCorsOrigin,
+} from "./core/http";
 
-// Global variable to cache secrets across warm invocations
 let cachedSecrets: AppSecrets | null = null;
 
-// Function to preload secrets, can be called at startup
 export async function preloadSecrets(): Promise<AppSecrets | null> {
   if (cachedSecrets) {
     return cachedSecrets;
   }
+
   try {
     cachedSecrets = await getAppSecrets();
     return cachedSecrets;
@@ -18,165 +24,36 @@ export async function preloadSecrets(): Promise<AppSecrets | null> {
   }
 }
 
-// Define the slot machine symbols
-const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "🔔", "⭐", "💎", "7️⃣"];
-
-// Define payout multipliers for different combinations
-const PAYOUTS: Record<string, number> = {
-  "💎💎💎": 1000,
-  "7️⃣7️⃣7️⃣": 500,
-  "⭐⭐⭐": 250,
-  "🔔🔔🔔": 100,
-  "🍇🍇🍇": 50,
-  "🍊🍊🍊": 25,
-  "🍋🍋🍋": 15,
-  "🍒🍒🍒": 10,
-  "💎💎": 20,
-  "7️⃣7️⃣": 15,
-  "⭐⭐": 10,
-  "🔔🔔": 5,
-  "🍒🍒": 2,
-};
-
-interface SlotMachineResult {
-  reels: string[];
-  isWin: boolean;
-  winAmount: number;
-  combination: string | undefined;
-  timestamp: string;
-  spinId: string;
-}
-
-interface SpinRequest {
-  bet?: number;
-}
-
-// Generate a random symbol
-function getRandomSymbol(): string {
-  const index = Math.floor(Math.random() * SYMBOLS.length);
-  const symbol = SYMBOLS[index];
-  if (!symbol) {
-    throw new Error("Failed to get random symbol");
-  }
-  return symbol;
-}
-
-// Generate a unique spin ID
-function generateSpinId(): string {
-  return `spin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// Calculate winnings based on the reel combination
-function calculateWinnings(
-  reels: string[],
-  bet: number
-): { isWin: boolean; winAmount: number; combination: string | undefined } {
-  const combination = reels.join("");
-
-  // Check for exact matches first (3 symbols)
-  if (PAYOUTS[combination]) {
-    const payout = PAYOUTS[combination];
-    if (payout) {
-      return {
-        isWin: true,
-        winAmount: payout * bet,
-        combination,
-      };
-    }
-  }
-
-  // Check for partial matches (2 symbols)
-  const twoSymbolCombo = reels.slice(0, 2).join("");
-  if (PAYOUTS[twoSymbolCombo]) {
-    const payout = PAYOUTS[twoSymbolCombo];
-    if (payout) {
-      return {
-        isWin: true,
-        winAmount: payout * bet,
-        combination: twoSymbolCombo,
-      };
-    }
-  }
-
-  return {
-    isWin: false,
-    winAmount: 0,
-    combination: undefined,
-  };
-}
-
-// Spin the slot machine
-function spinSlotMachine(bet: number = 1): SlotMachineResult {
-  const reels = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
-
-  const { isWin, winAmount, combination } = calculateWinnings(reels, bet);
-
-  return {
-    reels,
-    isWin,
-    winAmount,
-    combination,
-    timestamp: new Date().toISOString(),
-    spinId: generateSpinId(),
-  };
-}
-
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    // Use cached secrets or load them if not available
     let secrets = cachedSecrets;
     if (!secrets) {
-      try {
-        secrets = await preloadSecrets();
-      } catch {
-        secrets = await getAppSecrets();
-      }
+      secrets = (await preloadSecrets()) ?? (await getAppSecrets());
       cachedSecrets = secrets;
     }
 
-    // Parse request body if it exists
-    let requestBody: SpinRequest = {};
-    if (event.body) {
-      try {
-        requestBody = JSON.parse(event.body);
-      } catch {
-        // If parsing fails, use default values
-      }
-    }
+    const requestBody = parseSpinRequest(event.body);
+    const bet = normalizeBet(requestBody.bet);
+    const maxBetAmount = secrets.maxBetAmount || 100;
+    const origin = resolveCorsOrigin(secrets.corsOrigins);
 
-    // Get bet amount from request body or use default
-    const bet = requestBody.bet && requestBody.bet > 0 ? requestBody.bet : 1;
-
-    // Validate bet amount using secrets configuration
-    const maxBetAmount = secrets?.maxBetAmount || 100;
     if (bet > maxBetAmount) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": secrets?.corsOrigins?.[0] || "*",
-          "Access-Control-Allow-Headers": "Content-Type",
-          "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
-        },
+        headers: createCorsHeaders(origin),
         body: JSON.stringify({
           error: `Maximum bet amount is ${maxBetAmount}`,
         }),
       };
     }
 
-    // Spin the slot machine
     const result = spinSlotMachine(bet);
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": secrets?.corsOrigins?.[0] || "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
-      },
+      headers: createCorsHeaders(origin),
       body: JSON.stringify(result),
     };
   } catch (error) {
@@ -184,12 +61,7 @@ export const handler = async (
 
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
-      },
+      headers: createCorsHeaders("*"),
       body: JSON.stringify({
         error: "Internal server error",
       }),
@@ -197,7 +69,6 @@ export const handler = async (
   }
 };
 
-// Handle CORS preflight requests
 export const corsHandler = async (
   _event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {

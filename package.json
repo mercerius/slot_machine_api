@@ -1,7 +1,7 @@
 {
   "name": "slot_machine_api",
   "version": "1.0.0",
-  "description": "Slot Machine API for AWS Lambda",
+  "description": "Slot Machine API hostable on Vercel",
   "type": "module",
   "main": "dist/handler.js",
   "scripts": {
@@ -10,6 +10,8 @@
     "dev": "tsx watch src/local-server.ts",
     "dev:lambda": "tsx watch --inspect src/local-lambda.ts",
     "start": "node dist/handler.js",
+    "dev:vercel": "npx vercel dev",
+    "deploy:vercel": "npx vercel --prod",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
