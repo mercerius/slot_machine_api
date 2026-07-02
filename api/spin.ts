@@ -1,4 +1,5 @@
 import { getAppConfig } from "../src/config.js";
+import { hashIp, recordSpin } from "../src/db.js";
 import { spinSlotMachine } from "../src/core/game.js";
 import {
   createCorsHeaders,
@@ -10,6 +11,7 @@ import {
 interface VercelLikeRequest {
   method?: string;
   body?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface VercelLikeResponse {
@@ -31,10 +33,10 @@ function bodyToString(body: unknown): string | undefined {
   return undefined;
 }
 
-export default function spinHandler(
+export default async function spinHandler(
   req: VercelLikeRequest,
   res: VercelLikeResponse
-): void {
+): Promise<void> {
   const config = getAppConfig();
   const origin = resolveCorsOrigin(config.corsOrigins);
   const headers = createCorsHeaders(origin);
@@ -65,5 +67,10 @@ export default function spinHandler(
   }
 
   const result = spinSlotMachine(bet);
+
+  const rawIp = req.headers?.["x-forwarded-for"];
+  const ipStr = Array.isArray(rawIp) ? (rawIp[0] ?? null) : (rawIp ?? null);
+  await recordSpin(result, bet, hashIp(ipStr));
+
   res.status(200).json(result);
 }
