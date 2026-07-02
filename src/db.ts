@@ -3,6 +3,8 @@ import { createHash } from "crypto";
 import type { Database } from "./database.types.js";
 import type { SlotMachineResult } from "./core/game.js";
 
+const DB_TIMEOUT_MS = 3000;
+
 let supabase: SupabaseClient<Database> | null = null;
 
 function getSupabaseClient(): SupabaseClient<Database> {
@@ -43,32 +45,47 @@ export function hashIp(ip: string | null | undefined): string | null {
   return createHash("sha256").update(rawIp).digest("hex").slice(0, 32);
 }
 
+async function insertSpin(
+  result: SlotMachineResult,
+  bet: number,
+  ipHash: string | null
+): Promise<void> {
+  const client = getSupabaseClient();
+  const matchType = getMatchType(result.reels, result.isWin);
+
+  const { error } = await client.from("spins").insert({
+    spin_id: result.spinId,
+    bet_amount: bet,
+    reel_1: result.reels[0] ?? "",
+    reel_2: result.reels[1] ?? "",
+    reel_3: result.reels[2] ?? "",
+    is_win: result.isWin,
+    win_amount: result.winAmount,
+    combination: result.combination ?? null,
+    match_type: matchType,
+    ip_hash: ipHash,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function recordSpin(
   result: SlotMachineResult,
   bet: number,
   ipHash: string | null
 ): Promise<void> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`DB write timed out after ${DB_TIMEOUT_MS}ms`)),
+      DB_TIMEOUT_MS
+    )
+  );
+
   try {
-    const client = getSupabaseClient();
-    const matchType = getMatchType(result.reels, result.isWin);
-
-    const { error } = await client.from("spins").insert({
-      spin_id: result.spinId,
-      bet_amount: bet,
-      reel_1: result.reels[0] ?? "",
-      reel_2: result.reels[1] ?? "",
-      reel_3: result.reels[2] ?? "",
-      is_win: result.isWin,
-      win_amount: result.winAmount,
-      combination: result.combination ?? null,
-      match_type: matchType,
-      ip_hash: ipHash,
-    });
-
-    if (error) {
-      console.error("[db] Failed to record spin:", error.message);
-    }
+    await Promise.race([insertSpin(result, bet, ipHash), timeout]);
   } catch (err) {
-    console.error("[db] Unexpected error recording spin:", err);
+    console.error("[db] Failed to record spin:", err);
   }
 }

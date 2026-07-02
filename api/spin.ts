@@ -70,6 +70,9 @@ export default async function spinHandler(
 
   const rawIp = req.headers?.["x-forwarded-for"];
   const ipStr = Array.isArray(rawIp) ? (rawIp[0] ?? null) : (rawIp ?? null);
+
+  // recordSpin is best-effort and has its own timeout so a slow DB write
+  // cannot keep this Vercel function alive longer than necessary.
   await recordSpin(result, bet, hashIp(ipStr));
 
   res.status(200).json(result);
