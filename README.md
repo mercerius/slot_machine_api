@@ -51,16 +51,6 @@ npx vercel login
 corepack pnpm deploy:vercel
 ```
 
-## Local Development (non-Vercel)
-
-```bash
-# Express adapter (legacy local mode)
-corepack pnpm dev
-
-# Lambda simulator (legacy local mode)
-corepack pnpm dev:lambda
-```
-
 ## Testing and Quality
 
 ```bash
@@ -73,4 +63,3 @@ corepack pnpm lint
 
 - The core game logic is framework-agnostic under `src/core/`.
 - Vercel handlers live in `api/`.
-- Legacy AWS deployment scripts remain in `scripts/` for compatibility, but Vercel is the primary hosting target.

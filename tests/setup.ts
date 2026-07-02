@@ -1,10 +1,10 @@
 // Jest global setup file for slot machine API tests
 
-// Set NODE_ENV to test to ensure we're using mocked AWS services
-process.env.NODE_ENV = "test";
+// Make this file a module so TypeScript allows `declare global` augmentations
+export {};
 
-// Optional: Set AWS region to a consistent test value
-process.env.AWS_REGION = "us-east-1";
+// Set NODE_ENV to test to ensure deterministic configuration
+process.env.NODE_ENV = "test";
 
 // Increase Jest timeout for tests that might take longer
 // This is a more conservative value than in jest.config to avoid test flakiness
@@ -66,6 +66,10 @@ beforeEach(() => {
 });
 
 // Define global helper functions for tests to reduce duplication
+declare global {
+  var flushPromises: () => Promise<void>;
+}
+
 global.flushPromises = async () => {
   // This helper allows tests to flush all pending promises
   return new Promise((resolve) => setImmediate(resolve));
