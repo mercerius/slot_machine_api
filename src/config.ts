@@ -75,7 +75,11 @@ export function loadAppConfig(): AppConfig {
   const nodeEnv = process.env["NODE_ENV"] || "development";
   const environment =
     process.env["ENVIRONMENT"] ||
-    (nodeEnv === "production" ? "prod" : nodeEnv === "development" ? "dev" : nodeEnv);
+    (nodeEnv === "production"
+      ? "prod"
+      : nodeEnv === "development"
+        ? "dev"
+        : nodeEnv);
 
   return {
     maxBetAmount: parseNumberEnv(process.env["MAX_BET_AMOUNT"], 100),
@@ -83,7 +87,10 @@ export function loadAppConfig(): AppConfig {
     corsOrigins: parseCorsOrigins(process.env["CORS_ORIGINS"]),
     rateLimit: parseNumberEnv(process.env["RATE_LIMIT"], 100),
     environment,
-    debugMode: parseBooleanEnv(process.env["DEBUG_MODE"], environment === "dev"),
+    debugMode: parseBooleanEnv(
+      process.env["DEBUG_MODE"],
+      environment === "dev"
+    ),
     apiKeys: parseApiKeys(process.env["API_KEYS_JSON"]),
   };
 }
