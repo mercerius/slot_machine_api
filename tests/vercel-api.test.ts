@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import healthHandler from "../api/health";
 import spinHandler from "../api/spin";
 import { clearAppConfigCache } from "../src/config";
@@ -8,6 +9,11 @@ jest.mock("../src/db", () => ({
 }));
 
 type Headers = Record<string, string>;
+
+interface MockVercelResponse extends VercelResponse {
+  statusCode: number;
+  payload: unknown;
+}
 
 function createMockResponse() {
   const headers: Headers = {};
@@ -29,7 +35,18 @@ function createMockResponse() {
     },
   };
 
-  return { response, headers };
+  return { response: response as unknown as MockVercelResponse, headers };
+}
+
+function createMockRequest(
+  overrides: Partial<VercelRequest> = {}
+): VercelRequest {
+  return {
+    method: "GET",
+    body: {},
+    headers: {},
+    ...overrides,
+  } as unknown as VercelRequest;
 }
 
 describe("Vercel handlers", () => {
@@ -39,45 +56,77 @@ describe("Vercel handlers", () => {
     clearAppConfigCache();
   });
 
-  it("should return health response", () => {
-    const { response } = createMockResponse();
-    healthHandler({ method: "GET" }, response);
+  describe("health", () => {
+    it("should return health response", () => {
+      const { response } = createMockResponse();
+      healthHandler(createMockRequest({ method: "GET" }), response);
 
-    expect(response.statusCode).toBe(200);
-    expect(response.payload).toHaveProperty("status", "ok");
+      expect(response.statusCode).toBe(200);
+      expect(response.payload).toHaveProperty("status", "ok");
+    });
+
+    it("should handle CORS preflight", () => {
+      const { response, headers } = createMockResponse();
+      healthHandler(createMockRequest({ method: "OPTIONS" }), response);
+
+      expect(response.statusCode).toBe(200);
+      expect(headers["Access-Control-Allow-Origin"]).toBe("*");
+      expect(headers["Access-Control-Allow-Methods"]).toBe("OPTIONS, GET");
+    });
+
+    it("should reject non-GET methods", () => {
+      const { response } = createMockResponse();
+      healthHandler(createMockRequest({ method: "POST" }), response);
+
+      expect(response.statusCode).toBe(405);
+    });
   });
 
-  it("should spin successfully with valid bet", async () => {
-    const { response } = createMockResponse();
-    await spinHandler({ method: "POST", body: { bet: 5 } }, response);
+  describe("spin", () => {
+    it("should spin successfully with valid bet", async () => {
+      const { response } = createMockResponse();
+      await spinHandler(
+        createMockRequest({ method: "POST", body: { bet: 5 } }),
+        response
+      );
 
-    expect(response.statusCode).toBe(200);
-    expect(response.payload).toHaveProperty("reels");
-    expect(response.payload).toHaveProperty("spinId");
-  });
+      expect(response.statusCode).toBe(200);
+      expect(response.payload).toHaveProperty("reels");
+      expect(response.payload).toHaveProperty("spinId");
+    });
 
-  it("should reject oversized bet", async () => {
-    const { response } = createMockResponse();
-    await spinHandler({ method: "POST", body: { bet: 150 } }, response);
+    it("should reject oversized bet", async () => {
+      const { response } = createMockResponse();
+      await spinHandler(
+        createMockRequest({ method: "POST", body: { bet: 150 } }),
+        response
+      );
 
-    expect(response.statusCode).toBe(400);
-    expect(response.payload).toEqual({ error: "Maximum bet amount is 100" });
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.payload).toEqual({ error: "Maximum bet amount is 100" });
+    });
 
-  it("should allow GET spin with default bet", async () => {
-    const { response } = createMockResponse();
-    await spinHandler({ method: "GET" }, response);
+    it("should reject GET spin", async () => {
+      const { response } = createMockResponse();
+      await spinHandler(createMockRequest({ method: "GET" }), response);
 
-    expect(response.statusCode).toBe(200);
-    expect(response.payload).toHaveProperty("reels");
-    expect(response.payload).toHaveProperty("spinId");
-  });
+      expect(response.statusCode).toBe(405);
+    });
 
-  it("should handle CORS preflight", async () => {
-    const { response, headers } = createMockResponse();
-    await spinHandler({ method: "OPTIONS" }, response);
+    it("should handle CORS preflight", async () => {
+      const { response, headers } = createMockResponse();
+      await spinHandler(createMockRequest({ method: "OPTIONS" }), response);
 
-    expect(response.statusCode).toBe(200);
-    expect(headers["Access-Control-Allow-Origin"]).toBe("*");
+      expect(response.statusCode).toBe(200);
+      expect(headers["Access-Control-Allow-Origin"]).toBe("*");
+      expect(headers["Access-Control-Allow-Methods"]).toBe("OPTIONS, POST");
+    });
+
+    it("should reject unsupported methods", async () => {
+      const { response } = createMockResponse();
+      await spinHandler(createMockRequest({ method: "DELETE" }), response);
+
+      expect(response.statusCode).toBe(405);
+    });
   });
 });

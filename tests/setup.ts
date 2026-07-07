@@ -4,7 +4,7 @@
 export {};
 
 // Set NODE_ENV to test to ensure deterministic configuration
-process.env.NODE_ENV = "test";
+process.env["NODE_ENV"] = "test";
 
 // Increase Jest timeout for tests that might take longer
 // This is a more conservative value than in jest.config to avoid test flakiness
@@ -17,12 +17,12 @@ const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
 
 // In test environment, we'll filter out non-critical logs
-if (process.env.NODE_ENV === "test" && !process.env.DEBUG) {
+if (process.env["NODE_ENV"] === "test" && !process.env["DEBUG"]) {
   console.log = (...args: any[]) => {
     // Only allow critical logs or when DEBUG=true
     if (
       args[0]?.includes &&
-      (args[0].includes("[CRITICAL]") || process.env.DEBUG)
+      (args[0].includes("[CRITICAL]") || process.env["DEBUG"])
     ) {
       originalConsoleLog(...args);
     }
@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === "test" && !process.env.DEBUG) {
 
   console.warn = (...args: any[]) => {
     // Only show warnings when DEBUG=true
-    if (process.env.DEBUG) {
+    if (process.env["DEBUG"]) {
       originalConsoleWarn(...args);
     }
   };
@@ -76,7 +76,7 @@ global.flushPromises = async () => {
 };
 
 // Add memory usage tracking in debug mode
-if (process.env.DEBUG) {
+if (process.env["DEBUG"]) {
   afterEach(() => {
     const memoryUsage = process.memoryUsage();
     console.log(

@@ -1,45 +1,20 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAppConfig } from "../src/config.js";
 import { hashIp, recordSpin } from "../src/db.js";
 import { spinSlotMachine } from "../src/core/game.js";
 import {
   createCorsHeaders,
   normalizeBet,
-  parseSpinRequest,
   resolveCorsOrigin,
 } from "../src/core/http.js";
 
-interface VercelLikeRequest {
-  method?: string;
-  body?: unknown;
-  headers?: Record<string, string | string[] | undefined>;
-}
-
-interface VercelLikeResponse {
-  status: (code: number) => VercelLikeResponse;
-  setHeader: (name: string, value: string) => void;
-  json: (body: unknown) => void;
-  send: (body: unknown) => void;
-}
-
-function bodyToString(body: unknown): string | undefined {
-  if (typeof body === "string") {
-    return body;
-  }
-
-  if (body && typeof body === "object") {
-    return JSON.stringify(body);
-  }
-
-  return undefined;
-}
-
 export default async function spinHandler(
-  req: VercelLikeRequest,
-  res: VercelLikeResponse
+  req: VercelRequest,
+  res: VercelResponse
 ): Promise<void> {
   const config = getAppConfig();
   const origin = resolveCorsOrigin(config.corsOrigins);
-  const headers = createCorsHeaders(origin);
+  const headers = createCorsHeaders(origin, "OPTIONS, POST");
 
   Object.entries(headers).forEach(([name, value]) => {
     res.setHeader(name, value);
@@ -50,14 +25,12 @@ export default async function spinHandler(
     return;
   }
 
-  if (req.method !== "POST" && req.method !== "GET") {
+  if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  const requestBody =
-    req.method === "POST" ? parseSpinRequest(bodyToString(req.body)) : {};
-  const bet = normalizeBet(requestBody.bet);
+  const bet = normalizeBet(req.body?.bet);
 
   if (bet > config.maxBetAmount) {
     res
@@ -68,7 +41,7 @@ export default async function spinHandler(
 
   const result = spinSlotMachine(bet);
 
-  const rawIp = req.headers?.["x-forwarded-for"];
+  const rawIp = req.headers["x-forwarded-for"];
   const ipStr = Array.isArray(rawIp) ? (rawIp[0] ?? null) : (rawIp ?? null);
 
   // recordSpin is best-effort and has its own timeout so a slow DB write
