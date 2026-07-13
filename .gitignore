@@ -126,3 +126,5 @@ response.json
 
 # Local Copilot instructions
 .github/
+.vercel
+.env*
